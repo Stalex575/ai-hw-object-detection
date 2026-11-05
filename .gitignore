@@ -1,0 +1,55 @@
+# Operating system and editor files
+.DS_Store
+._*
+.AppleDouble/
+.LSOverride
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local competition documentation, raw data, and generated datasets
+/description/
+/data/
+/prep/
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# Local credentials and environment settings
+.env
+.env.*
+!.env.example
+kaggle.json
+.netrc
+
+# Training runs, downloaded weights, and generated predictions
+/runs/
+/wandb/
+/lightning_logs/
+/checkpoints/
+/weights/
+/outputs/
+/predictions/
+/submissions/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.tfevents.*
+*.log
