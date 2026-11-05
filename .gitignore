@@ -53,3 +53,14 @@ kaggle.json
 *.engine
 *.tfevents.*
 *.log
+
+# Competition data downloaded into the repo root
+/train/
+/val/
+/test/
+/test_images.csv
+/sample_submission.csv
+
+# Local notes and Windows download leftovers
+PLAN.md
+*:Zone.Identifier
