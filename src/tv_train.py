@@ -121,6 +121,113 @@ def build_model(arch, train_sizes, test_size, max_size_train, max_size_test):
     return model
 
 
+def explicit_anchor_generator(wh_per_level):
+    """AnchorGenerator whose per-level cell anchors are explicit (w, h) pairs, e.g. from k-means."""
+    from torchvision.models.detection.anchor_utils import AnchorGenerator
+
+    generator = AnchorGenerator(tuple((1,) * len(level) for level in wh_per_level),
+                                ((1.0,),) * len(wh_per_level))  # sizes/ratios here only fix the anchor counts
+    generator.cell_anchors = [torch.tensor([[-w / 2, -h / 2, w / 2, h / 2] for w, h in level]).round()
+                              for level in wh_per_level]
+    return generator
+
+
+def fastrcnn_loss_giou(weight):
+    """RoI-head loss with GIoU on decoded boxes instead of Smooth L1 on encoded deltas.
+
+    Prediction and target deltas are both decoded against a unit reference box. IoU and GIoU are invariant
+    to per-axis scaling and translation, so this equals GIoU on the boxes decoded against the real proposals
+    (which torchvision's fastrcnn_loss does not receive). Weight 10 follows mmdetection's Faster R-CNN GIoU config.
+    """
+    import torch.nn.functional as F
+    from torchvision.models.detection._utils import BoxCoder
+    from torchvision.ops import generalized_box_iou_loss
+
+    coder = BoxCoder((10.0, 10.0, 5.0, 5.0))  # torchvision RoIHeads default bbox_reg_weights
+
+    def loss_fn(class_logits, box_regression, labels, regression_targets):
+        labels = torch.cat(labels, dim=0)
+        regression_targets = torch.cat(regression_targets, dim=0)
+        classification_loss = F.cross_entropy(class_logits, labels)
+        positive = torch.where(labels > 0)[0]
+        box_regression = box_regression.reshape(class_logits.shape[0], -1, 4)
+        pred = box_regression[positive, labels[positive]].float()
+        target = regression_targets[positive].float()
+        unit = pred.new_tensor([[0.0, 0.0, 1.0, 1.0]]).expand(len(positive), 4)
+        box_loss = generalized_box_iou_loss(coder.decode_single(pred, unit), coder.decode_single(target, unit),
+                                            reduction="sum")
+        return classification_loss, weight * box_loss / labels.numel()
+
+    return loss_fn
+
+
+def configure(model, arch, args):
+    """Apply the single-knob experiment flags. Returns a dict describing what changed (for config.json)."""
+    from torchvision.models.detection import _utils as det_utils
+    from torchvision.models.detection.anchor_utils import AnchorGenerator
+
+    changed = {}
+    generator = None
+    if args.anchors_json:
+        spec = read_json(args.anchors_json)
+        generator = explicit_anchor_generator(spec["wh"])
+        changed["anchors"] = spec["wh"]
+    elif args.anchor_sizes:
+        sizes = [int(x) for x in args.anchor_sizes.split(",")]
+        if arch == "retinanet":  # keep torchvision's 3 octave scales per level
+            per_level = tuple((x, int(x * 2 ** (1.0 / 3)), int(x * 2 ** (2.0 / 3))) for x in sizes)
+        else:
+            per_level = tuple((x,) for x in sizes)
+        generator = AnchorGenerator(per_level, ((0.5, 1.0, 2.0),) * len(per_level))
+        changed["anchor_sizes"] = per_level
+    if generator is not None:
+        old = model.anchor_generator if arch == "retinanet" else model.rpn.anchor_generator
+        if generator.num_anchors_per_location() != old.num_anchors_per_location():
+            raise ValueError(f"anchors per location {generator.num_anchors_per_location()} != "
+                             f"{old.num_anchors_per_location()} expected by the pretrained head")
+        if arch == "retinanet":
+            model.anchor_generator = generator
+        else:
+            model.rpn.anchor_generator = generator
+    if args.fg_iou is not None or args.bg_iou is not None:
+        if arch == "retinanet":
+            fg, bg = args.fg_iou or 0.5, args.bg_iou or 0.4
+            model.proposal_matcher = det_utils.Matcher(fg, bg, allow_low_quality_matches=True)
+        else:
+            fg, bg = args.fg_iou or 0.5, args.bg_iou or 0.5
+            model.roi_heads.proposal_matcher = det_utils.Matcher(fg, bg, allow_low_quality_matches=False)
+        changed.update(fg_iou=fg, bg_iou=bg)
+    if args.focal_gamma is not None:
+        if arch != "retinanet":
+            raise ValueError("--focal-gamma is RetinaNet only")
+        import functools
+        from torchvision.models.detection import retinanet as R
+        from torchvision.ops import sigmoid_focal_loss
+        R.sigmoid_focal_loss = functools.partial(sigmoid_focal_loss, alpha=0.25, gamma=args.focal_gamma)
+        changed["focal_gamma"] = args.focal_gamma
+    if args.box_positive_fraction is not None:
+        if arch != "fasterrcnn":
+            raise ValueError("--box-positive-fraction is Faster R-CNN only")
+        model.roi_heads.fg_bg_sampler.positive_fraction = args.box_positive_fraction
+        changed["box_positive_fraction"] = args.box_positive_fraction
+    if args.box_loss == "giou":
+        if arch != "fasterrcnn":
+            raise ValueError("--box-loss giou is Faster R-CNN only (RetinaNet v2 already uses GIoU)")
+        from torchvision.models.detection import roi_heads
+        roi_heads.fastrcnn_loss = fastrcnn_loss_giou(args.giou_weight)
+        changed.update(box_loss="giou", giou_weight=args.giou_weight)
+    if args.nms_thresh is not None:
+        if arch == "retinanet":
+            model.nms_thresh = args.nms_thresh
+        else:
+            model.roi_heads.nms_thresh = args.nms_thresh
+        changed["nms_thresh"] = args.nms_thresh
+    if args.rpn_post_nms_test is not None:
+        model.rpn._post_nms_top_n["testing"] = args.rpn_post_nms_test
+        changed["rpn_post_nms_test"] = args.rpn_post_nms_test
+    return changed
+
+
 def set_mode(model, train):
     """Switch between scale-jitter training sizes and the fixed test size."""
     sizes, max_size = model.size_cfg["train" if train else "test"]
@@ -140,7 +247,8 @@ def predict(model, images, root, device, batch=4, workers=4, amp=True):
             boxes = output["boxes"].float().cpu().tolist()
             for (x1, y1, x2, y2), score, label in zip(boxes, output["scores"].float().cpu().tolist(),
                                                      output["labels"].cpu().tolist()):
-                if x2 > x1 and y2 > y1:
+                # RetinaNet keeps an unused logit for label 0 (no positives ever); drop it, it is not a class.
+                if x2 > x1 and y2 > y1 and label >= 1:
                     predictions.append({"image_id": info["id"], "category_id": int(label),
                                         "score": float(score), "bbox": [x1, y1, x2 - x1, y2 - y1]})
         seen += len(infos)
@@ -197,12 +305,25 @@ def parse_args(argv=None):
     p.add_argument("--max-size", type=int, default=1280, help="long-side cap at test time")
     p.add_argument("--jitter", type=float, default=0.25, help="train short side in [1-j, 1+j] * test-size")
     p.add_argument("--workers", type=int, default=4)
+    p.add_argument("--eval-workers", type=int, default=None,
+                   help="loader workers for val/test inference (default: --workers). Fewer = lower RAM peak at eval")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--eval-every", type=int, default=2, help="shared-evaluator fold-0 mAP every N epochs")
     p.add_argument("--no-amp", action="store_true")
     p.add_argument("--test", action="store_true", help="also predict the test set and write submission.csv")
     p.add_argument("--resume", action="store_true", help="continue from <out>/last.pt")
     p.add_argument("--limit", type=int, default=0, help="debug: use only N train/val images")
+    g = p.add_argument_group("single-knob experiment flags (default = torchvision behaviour)")
+    g.add_argument("--anchor-sizes", help="comma list of base anchor sizes per FPN level, e.g. 16,32,64,128,256")
+    g.add_argument("--anchors-json", help='explicit per-level anchors {"wh": [[[w, h], ...], ...]} (k-means)')
+    g.add_argument("--fg-iou", type=float, help="RetinaNet anchor / Faster R-CNN RoI foreground IoU")
+    g.add_argument("--bg-iou", type=float, help="RetinaNet anchor / Faster R-CNN RoI background IoU")
+    g.add_argument("--focal-gamma", type=float, help="RetinaNet focal loss gamma (default 2.0)")
+    g.add_argument("--box-positive-fraction", type=float, help="Faster R-CNN RoI sampler positive fraction (0.25)")
+    g.add_argument("--box-loss", choices=["smoothl1", "giou"], default="smoothl1", help="Faster R-CNN RoI box loss")
+    g.add_argument("--giou-weight", type=float, default=10.0)
+    g.add_argument("--nms-thresh", type=float, help="final per-class NMS IoU (Faster R-CNN 0.5, RetinaNet 0.5)")
+    g.add_argument("--rpn-post-nms-test", type=int, help="Faster R-CNN RPN proposals kept at test time (1000)")
     p.add_argument("--device", default="cuda:0")
     p.add_argument("--data", default=str(REPO))
     p.add_argument("--prep", default=str(REPO / "prep"))
@@ -251,7 +372,10 @@ def main(argv=None):
                         collate_fn=collate, drop_last=True, generator=generator, worker_init_fn=worker_init,
                         persistent_workers=args.workers > 0, pin_memory=True)
 
-    model = build_model(args.arch, train_sizes, args.test_size, max_size_train, args.max_size).to(device)
+    model = build_model(args.arch, train_sizes, args.test_size, max_size_train, args.max_size)
+    config["changes"] = configure(model, args.arch, args)
+    write_json(out / "config.json", config)
+    model = model.to(device)
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=lr, momentum=0.9, weight_decay=1e-4)
     total = args.epochs * len(loader)
@@ -284,6 +408,8 @@ def main(argv=None):
         "python": platform.python_version(), "gpu": torch.cuda.get_device_name(device), "commit": commit,
         "src_dirty": dirty, "versions": {p: version(p) for p in ("torch", "torchvision", "numpy", "faster-coco-eval")},
         "folds_sha256": hashlib.sha256((REPO / "folds.csv").read_bytes()).hexdigest()})
+    if config["changes"]:
+        say("changes vs baseline:", json.dumps(config["changes"]))
     say(f"{args.arch} | train {len(train_set)} imgs, {len(loader)} it/epoch x {args.epochs} epochs | "
         f"batch {args.batch} lr {lr} | train short sides {train_sizes[0]}..{train_sizes[-1]} | val {len(val_images)}")
 
@@ -320,7 +446,7 @@ def main(argv=None):
                "lr": optimizer.param_groups[0]["lr"], "epoch_min": (time.perf_counter() - t0) / 60}
         if (epoch + 1) % args.eval_every == 0 or epoch + 1 == args.epochs:
             t1 = time.perf_counter()
-            predictions = predict(model, val_images, data / "train", device, workers=args.workers, amp=amp)
+            predictions = predict(model, val_images, data / "train", device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
             metrics = evaluate_predictions(gt_val, predictions)["metrics"]
             row.update({k: v for k, v in metrics.items()}, eval_min=(time.perf_counter() - t1) / 60)
             if metrics["mAP"] > best:
@@ -341,7 +467,7 @@ def main(argv=None):
     say(f"training done in {training_hours:.2f} h; best fold mAP {best:.4f}")
 
     # Final reported numbers come from the last epoch (fixed-length protocol), not the best checkpoint.
-    predictions = predict(model, val_images, data / "train", device, workers=args.workers, amp=amp)
+    predictions = predict(model, val_images, data / "train", device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
     write_json(out / "val_predictions.json", predictions)
     report = evaluate_predictions(gt_val, predictions)
     write_json(out / "metrics.json", report)
@@ -355,7 +481,7 @@ def main(argv=None):
         test_images = submit.read_test_images(data / "test_images.csv")
         if args.limit:  # debug only: partial submission, never upload it
             test_images = test_images[:args.limit]
-        test_predictions = predict(model, test_images, data, device, workers=args.workers, amp=amp)
+        test_predictions = predict(model, test_images, data, device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
         write_json(out / "test_predictions.json", test_predictions)
         submit.write_submission(test_images, test_predictions, out / "submission.csv")
         check = submit.validate_submission(test_images, out / "submission.csv")
