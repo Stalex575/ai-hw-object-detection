@@ -1,0 +1,73 @@
+{
+  "arch": "fasterrcnn",
+  "run_name": "frcnn_anchors16-256_fold0_1280_e12_b2_s42_v1",
+  "fold": 0,
+  "step": 5,
+  "epochs": 12,
+  "batch": 2,
+  "lr": 0.0025,
+  "warmup_iters": 500,
+  "test_size": 720,
+  "max_size": 1280,
+  "jitter": 0.25,
+  "workers": 4,
+  "seed": 42,
+  "eval_every": 2,
+  "no_amp": false,
+  "test": true,
+  "resume": false,
+  "limit": 0,
+  "anchor_sizes": "16,32,64,128,256",
+  "anchors_json": null,
+  "fg_iou": null,
+  "bg_iou": null,
+  "focal_gamma": null,
+  "box_positive_fraction": null,
+  "box_loss": "smoothl1",
+  "giou_weight": 10.0,
+  "nms_thresh": null,
+  "rpn_post_nms_test": null,
+  "device": "cuda:0",
+  "data": "/home/stalex/unik_shit/ai/ai-hw-object-detection",
+  "prep": "/home/stalex/unik_shit/ai/ai-hw-object-detection/prep",
+  "out_root": "/home/stalex/unik_shit/ai/ai-hw-object-detection/outputs",
+  "train_short_sides": [
+    544,
+    576,
+    608,
+    640,
+    672,
+    704,
+    736,
+    768,
+    800,
+    832,
+    864,
+    896
+  ],
+  "max_size_train": 1600,
+  "optimizer": "SGD momentum 0.9, wd 1e-4",
+  "schedule": "linear warm-up, then per-iteration cosine to 0",
+  "train_images": "prep/yolo/train_step5_masked_fold0_train.txt (masked)",
+  "train_gt": "prep/coco/train_step5_fold0_train.json",
+  "val_gt": "prep/coco/train_step5_fold0_val.json (original images)",
+  "changes": {
+    "anchor_sizes": [
+      [
+        16
+      ],
+      [
+        32
+      ],
+      [
+        64
+      ],
+      [
+        128
+      ],
+      [
+        256
+      ]
+    ]
+  }
+}

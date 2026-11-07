@@ -64,3 +64,6 @@ kaggle.json
 # Local notes and Windows download leftovers
 PLAN.md
 *:Zone.Identifier
+
+# Shared planning notes (kept locally, not on GitHub)
+/SHARED_TRAIN_PLAN.md

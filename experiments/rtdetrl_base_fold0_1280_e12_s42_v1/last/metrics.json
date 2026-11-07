@@ -1,0 +1,77 @@
+{
+  "metric_status": "COCO diagnostics; competition scorer parity unconfirmed",
+  "backend": "faster",
+  "iou_thresholds": [
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.8999999999999999,
+    0.95
+  ],
+  "global_max_detections": 500,
+  "metrics": {
+    "mAP": 0.1785849455283492,
+    "AP50": 0.323913227290782,
+    "AP75": 0.1747237808054979,
+    "AP_small": 0.04588291045674739,
+    "AP_medium": 0.14509317175067019,
+    "AP_large": 0.26185364733852273
+  },
+  "per_class": {
+    "person": {
+      "mAP": 0.14493469851066262,
+      "AP50": 0.3753796961567683,
+      "AP_small": 0.07585055029715752
+    },
+    "bicycle": {
+      "mAP": 0.047616846778441184,
+      "AP50": 0.12100196507689592,
+      "AP_small": 0.009632172590595803
+    },
+    "car": {
+      "mAP": 0.4762833364420632,
+      "AP50": 0.7891538654150322,
+      "AP_small": 0.17725593360721656
+    },
+    "van": {
+      "mAP": 0.17135191025996363,
+      "AP50": 0.2631505647431609,
+      "AP_small": 0.02864503472259123
+    },
+    "truck": {
+      "mAP": 0.1497652083319764,
+      "AP50": 0.2537438506984729,
+      "AP_small": 0.00013395268251146201
+    },
+    "tricycle": {
+      "mAP": 0.12887304244548772,
+      "AP50": 0.2465697608548997,
+      "AP_small": 0.018015535965067168
+    },
+    "bus": {
+      "mAP": 0.2495705042454197,
+      "AP50": 0.37801974104278174,
+      "AP_small": null
+    },
+    "motor": {
+      "mAP": 0.060284017212779026,
+      "AP50": 0.1642863743382437,
+      "AP_small": 0.011647193332091932
+    }
+  },
+  "counts": {
+    "input_detections": 487500,
+    "kept_detections": 487500,
+    "clipped_detections": 0,
+    "outside_image_dropped": 0,
+    "over_cap_dropped": 0,
+    "images": 1625,
+    "images_with_predictions": 1625
+  },
+  "weights": "outputs/rtdetrl_base_fold0_1280_e12_s42_v1/train/weights/last.pt"
+}

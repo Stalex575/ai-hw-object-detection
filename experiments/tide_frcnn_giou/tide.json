@@ -1,0 +1,50 @@
+{
+  "cls_confusion_score_weighted": {
+    "car -> GT van": 1087.1,
+    "van -> GT car": 1049.3,
+    "motor -> GT bicycle": 882.4,
+    "person -> GT motor": 624.1,
+    "bicycle -> GT motor": 366.5,
+    "person -> GT bicycle": 365.9,
+    "tricycle -> GT motor": 346.0,
+    "motor -> GT person": 338.9,
+    "motor -> GT tricycle": 336.5,
+    "car -> GT tricycle": 197.9,
+    "truck -> GT tricycle": 165.1,
+    "car -> GT truck": 145.1
+  },
+  "predictions": "outputs/frcnn_giou_fold0_1280_e12_b2_s42_v1/val_predictions.json",
+  "min_score": 0.0,
+  "t_f": 0.5,
+  "t_b": 0.1,
+  "AP50": 0.5219597820942979,
+  "counts": {
+    "TP": 57650,
+    "ignored": 42782,
+    "Bkg": 79627,
+    "Cls": 79923,
+    "Both": 30371,
+    "Loc": 23962,
+    "Dup": 3281,
+    "Miss": 10926
+  },
+  "score_weighted_counts": {
+    "TP": 44886.1,
+    "ignored": 7865.8,
+    "Bkg": 7370.3,
+    "Cls": 7002.4,
+    "Both": 2423.6,
+    "Loc": 4098.7,
+    "Dup": 323.1
+  },
+  "dAP50": {
+    "Cls": 0.12336029648184077,
+    "Loc": 0.04790976257980162,
+    "Both": 0.011591600432087956,
+    "Dup": 0.00042440558426515285,
+    "Bkg": 0.033153532233826,
+    "Miss": 0.06953831863692872,
+    "FP_all": 0.23175308919283077,
+    "FN_all": 0.1458390551425025
+  }
+}
