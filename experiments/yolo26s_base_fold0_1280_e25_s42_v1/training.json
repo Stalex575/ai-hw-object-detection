@@ -1,0 +1,5 @@
+{
+  "hours": 1.5880940527180554,
+  "best": "/home/stalex/unik_shit/ai/ai-hw-object-detection/outputs/yolo26s_base_fold0_1280_e25_s42_v1/train/weights/best.pt",
+  "epochs": 25
+}

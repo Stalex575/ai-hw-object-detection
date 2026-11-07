@@ -67,7 +67,7 @@ def predict(model, images, root, output, *, imgsz=640, batch=8, device=0, half=T
         names = [names[i] for i in range(len(names))]
     if list(names) != list(CLASS_NAMES):
         raise ValueError("Checkpoint class order differs from the competition")
-    predictions, seen = [], set()
+    predictions, seen, degenerate = [], set(), 0
     for start in range(0, len(images), batch):
         group = images[start:start + batch]
         paths = [Path(root) / image["file_name"] for image in group]
@@ -92,13 +92,17 @@ def predict(model, images, root, output, *, imgsz=640, batch=8, device=0, half=T
                 if cls != int(cls) or not 0 <= cls < 8:
                     raise ValueError(f"Invalid model class: {cls}")
                 x1, y1, x2, y2 = box
+                if x2 <= x1 or y2 <= y1:  # degenerate (zero-area) box after Ultralytics clipping
+                    degenerate += 1
+                    continue
                 predictions.append({"image_id": image["id"], "category_id": int(cls) + 1,
                                     "score": score, "bbox": [x1, y1, x2 - x1, y2 - y1]})
     if len(seen) != len(images):
         raise ValueError(f"Incomplete inference: {len(seen)}/{len(images)} images")
     predictions, counts = normalize_predictions(predictions, images)
     write_json(output, predictions)
-    write_json(str(output) + ".manifest.json", {**counts, "completed_images": len(seen), "end2end": end2end})
+    write_json(str(output) + ".manifest.json", {**counts, "completed_images": len(seen), "end2end": end2end,
+                                                "degenerate_dropped": degenerate})
     return predictions
 
 

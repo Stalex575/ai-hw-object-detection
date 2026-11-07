@@ -1,0 +1,14 @@
+{
+  "train_images": 3243,
+  "val_images": 1625,
+  "fold": 0,
+  "frame_step": 5,
+  "oracle": {
+    "mAP": 1.0,
+    "AP50": 1.0,
+    "AP75": 1.0,
+    "AP_small": 1.0,
+    "AP_medium": 0.9999985609330542,
+    "AP_large": 1.0
+  }
+}
