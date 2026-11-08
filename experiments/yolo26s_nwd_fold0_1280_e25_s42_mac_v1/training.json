@@ -1,0 +1,13 @@
+{
+  "hours": 7.813396368525137,
+  "epochs": 25,
+  "target_epochs": 25,
+  "actual_batch": 2,
+  "timed_out": false,
+  "hours_basis": "Approximate total: first failed attempt wall time plus resumed training; includes failed-attempt startup.",
+  "last_attempt_hours": 5.460473156076381,
+  "total_wall_hours": 7.8996854141023425,
+  "initial_batch": 4,
+  "resumed_from_epoch": 7,
+  "failure": "MPS memory limit during epoch 8; restored epoch 7, repeated epoch 8 at batch 2."
+}
