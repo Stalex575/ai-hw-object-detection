@@ -33,13 +33,18 @@ FAMILY = {
     "Faster R-CNN": "#eda100",
     "RetinaNet": "#e87ba4",
 }
-# Within one family's curve panel, variants take slots 1..4 in this order (baseline first).
+# Within one curve panel, runs take slots 1..4 in panel order (baseline first), so a run keeps its colour
+# while later runs are still training. A seed replicate takes its baseline's colour, dashed, and no slot.
 VARIANT_SLOTS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+ULTRA_VARIANTS = {"yolo26s_smoke_fold0_640_s42_v1": "#2a78d6", "yolo26s_nwd_fold0_1280_e25_s42_mac_v1": "#eda100"}
+SEED_REPLICATES = {"frcnn_base_fold0_1280_e12_b2_s43_v1": "frcnn_base_fold0_1280_e12_b2_s42_v1",
+                   "frcnn_posfrac0.5_fold0_1280_e12_b2_s43_v1": "frcnn_posfrac0.5_fold0_1280_e12_b2_s42_v1"}
 
 # run -> (family, kind, short label of the single change; "baseline" for the family baseline)
 RUNS = {
     "yolo26s_smoke_fold0_640_s42_v1": ("YOLO26s", "ultralytics", "640 smoke, 20 ep"),
     "yolo26s_base_fold0_1280_e25_s42_v1": ("YOLO26s", "ultralytics", "baseline"),
+    "yolo26s_nwd_fold0_1280_e25_s42_mac_v1": ("YOLO26s", "ultralytics", "NWD box loss (Y2, Mac)"),
     "rtdetrl_base_fold0_1280_e12_s42_v1": ("RT-DETR-L", "ultralytics", "baseline"),
     "frcnn_base_fold0_1280_e12_b2_s42_v1": ("Faster R-CNN", "torchvision", "baseline"),
     "frcnn_anchors16-256_fold0_1280_e12_b2_s42_v1": ("Faster R-CNN", "torchvision", "RPN anchors 16-256"),
@@ -50,7 +55,25 @@ RUNS = {
     "frcnn_posfrac0.5_fold0_1280_e12_b2_s42_v1": ("Faster R-CNN", "torchvision", "RoI positive fraction 0.5"),
     "retinanet_iou0.4-0.3_fold0_1280_e12_b2_s42_v1": ("RetinaNet", "torchvision", "IoU thresholds 0.4/0.3"),
     "retinanet_kmeansshared_fold0_1280_e12_b2_s42_v1": ("RetinaNet", "torchvision", "k-means anchors, shared"),
+    "frcnn_nomask_fold0_1280_e12_b2_s42_v1": ("Faster R-CNN", "torchvision", "unmasked train frames (D1)"),
+    "frcnn_base_fold0_1280_e12_b2_s43_v1": ("Faster R-CNN", "torchvision", "baseline, seed 43"),
+    "frcnn_giou_posfrac0.5_fold0_1280_e12_b2_s42_v1": ("Faster R-CNN", "torchvision", "GIoU + positive fraction 0.5"),
+    "frcnn_posfrac0.5_fold0_1280_e12_b2_s43_v1": ("Faster R-CNN", "torchvision", "RoI positive fraction 0.5, seed 43"),
 }
+# Torchvision curve panels: at most 4 colours each (dataviz rule), so each family is split by topic.
+FB, RB = "frcnn_base_fold0_1280_e12_b2_s42_v1", "retinanet_base_fold0_1280_e12_b2_s42_v1"
+CURVE_PANELS = [
+    ("Faster R-CNN - single knobs", [FB, "frcnn_anchors16-256_fold0_1280_e12_b2_s42_v1",
+                                     "frcnn_giou_fold0_1280_e12_b2_s42_v1", "frcnn_posfrac0.5_fold0_1280_e12_b2_s42_v1",
+                                     "frcnn_posfrac0.5_fold0_1280_e12_b2_s43_v1"]),
+    ("Faster R-CNN - seed, masking, combined", [FB, "frcnn_base_fold0_1280_e12_b2_s43_v1",
+                                                    "frcnn_nomask_fold0_1280_e12_b2_s42_v1",
+                                                    "frcnn_giou_posfrac0.5_fold0_1280_e12_b2_s42_v1"]),
+    ("RetinaNet - anchors", [RB, "retinanet_kmeans_fold0_1280_e12_b2_s42_v1",
+                             "retinanet_kmeansshared_fold0_1280_e12_b2_s42_v1"]),
+    ("RetinaNet - loss and matching", [RB, "retinanet_gamma1.5_fold0_1280_e12_b2_s42_v1",
+                                       "retinanet_iou0.4-0.3_fold0_1280_e12_b2_s42_v1"]),
+]
 EXAMPLES = ["frcnn_base_fold0_1280_e12_b2_s42_v1", "retinanet_base_fold0_1280_e12_b2_s42_v1"]
 KEEP = ["metrics.json", "experiment.csv", "speed.json", "runtime.json", "training.json", "preflight.json",
         "config.json", "train_log.csv", "validation_examples.jpg", "submission_check.json"]
@@ -60,7 +83,8 @@ INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 
 
 def finished(run):
-    return (OUT / run / "experiment.csv").exists()
+    """Laptop runs live in outputs/; runs trained elsewhere (Oleh's Mac) are committed straight to experiments/."""
+    return (OUT / run / "experiment.csv").exists() or (EXP / run / "experiment.csv").exists()
 
 
 def label(run):
@@ -132,18 +156,23 @@ def style(ax):
 
 def curves():
     """Per-epoch validation mAP@[.5:.95] on the fold-0 val frames. Ultralytics runs: Ultralytics' validator
-    (not comparable with the shared evaluator). Torchvision runs: shared evaluator, one panel per family."""
+    (not comparable with the shared evaluator). Torchvision runs: shared evaluator, CURVE_PANELS."""
     ultra = [r for r in RUNS if RUNS[r][1] == "ultralytics" and (EXP / r / "results.csv").exists()]
-    tv_families = [f for f in FAMILY if any(RUNS[r][0] == f and RUNS[r][1] == "torchvision" and finished(r)
-                                            for r in RUNS)]
-    panels = 1 + len(tv_families)
-    fig, axes = plt.subplots(1, panels, figsize=(5.2 * panels, 4), sharey=True, facecolor=SURFACE, squeeze=False)
-    axes = axes[0]
+    tv_panels = [(t, runs) for t, runs in CURVE_PANELS if sum(finished(r) for r in runs) >= 2]
+    panels = 1 + len(tv_panels)
+    cols = min(panels, 3)
+    nrows = -(-panels // cols)
+    fig, grid_axes = plt.subplots(nrows, cols, figsize=(5.2 * cols, 4 * nrows), sharey=True, facecolor=SURFACE,
+                                  squeeze=False)
+    grid_axes = grid_axes.ravel()
+    for ax in grid_axes[panels:]:
+        ax.set_visible(False)
+    axes = grid_axes[:panels]
 
     ends = {}  # axis -> [(x, y)] of line ends, labelled after all lines are drawn
 
-    def draw(ax, x, y, color, text):
-        ax.plot(x, y, color=color, linewidth=2, marker="o", markersize=4, label=text)
+    def draw(ax, x, y, color, text, linestyle="-"):
+        ax.plot(x, y, color=color, linewidth=2, marker="o", markersize=4, label=text, linestyle=linestyle)
         ends.setdefault(ax, []).append((x[-1], y[-1]))
 
     def label_ends(ax, gap=0.011):
@@ -153,28 +182,35 @@ def curves():
             placed.append(max(y, placed[-1] + gap) if placed else y)
             ax.annotate(f"{y:.3f}", (x, y), xytext=(x + 0.04 * (ax.get_xlim()[1] - ax.get_xlim()[0]) / 3, placed[-1]),
                         textcoords="data", va="center", fontsize=8.5, color=INK)
+        return placed[-1] if placed else 0
 
     for run in ultra:
         rows = list(csv.DictReader((EXP / run / "results.csv").open()))
         family, _, change = RUNS[run]
-        color = FAMILY[family] if change == "baseline" else "#2a78d6"
+        color = FAMILY[family] if change == "baseline" else ULTRA_VARIANTS.get(run, "#2a78d6")
         draw(axes[0], [int(r["epoch"]) for r in rows], [float(r["metrics/mAP50-95(B)"]) for r in rows],
              color, label(run))
     axes[0].set_title("Ultralytics runs - Ultralytics validator", fontsize=10.5, color=INK, loc="left")
-    for ax, family in zip(axes[1:], tv_families):
-        runs = [r for r in RUNS if RUNS[r][0] == family and finished(r)]
-        for slot, run in enumerate(runs):
+    for ax, (title, runs) in zip(axes[1:], tv_panels):
+        slots = [r for r in runs if r not in SEED_REPLICATES]
+        for run in runs:
+            if not finished(run):
+                continue
+            base = SEED_REPLICATES.get(run, run)
             rows = [r for r in csv.DictReader((EXP / run / "train_log.csv").open()) if r.get("mAP")]
-            draw(ax, [int(r["epoch"]) for r in rows], [float(r["mAP"]) for r in rows], VARIANT_SLOTS[slot],
-                 RUNS[run][2])
-        ax.set_title(f"{family} - shared evaluator", fontsize=10.5, color=INK, loc="left")
+            draw(ax, [int(r["epoch"]) for r in rows], [float(r["mAP"]) for r in rows],
+                 VARIANT_SLOTS[slots.index(base)], RUNS[run][2], "--" if run in SEED_REPLICATES else "-")
+        ax.set_title(f"{title} (shared eval.)", fontsize=10.5, color=INK, loc="left")
         ax.set_xlim(0, 13.5)
-    axes[0].set_ylabel("val mAP@[.5:.95], fold 0", fontsize=9.5, color=MUTED)
+    for ax in axes[::cols]:
+        ax.set_ylabel("val mAP@[.5:.95], fold 0", fontsize=9.5, color=MUTED)
+    top = 0
     for ax in axes:
         style(ax)
         ax.set_xlabel("epoch", fontsize=9.5, color=MUTED)
-        label_ends(ax)
+        top = max(top, label_ends(ax))
         ax.legend(frameon=False, fontsize=8.5, labelcolor=INK, loc="lower right")
+    axes[0].set_ylim(top=top + 0.012)  # shared y: keep the highest nudged end label inside the plot
     fig.tight_layout()
     fig.savefig(EXP / "figures" / "val_map_per_epoch.png", dpi=150, facecolor=SURFACE)
     plt.close(fig)
@@ -182,7 +218,8 @@ def curves():
 
 def ablation():
     """Final fold-0 mAP of every run (last epoch), grouped by family, coloured by family."""
-    runs = [r for r in RUNS if finished(r)]
+    order = list(FAMILY)
+    runs = sorted((r for r in RUNS if finished(r)), key=lambda r: order.index(RUNS[r][0]))  # stable: RUNS order within a family
     values = [json.loads(reported(r, "metrics.json").read_text())["metrics"]["mAP"] for r in runs]
     fig, ax = plt.subplots(figsize=(8, 0.42 * len(runs) + 1.2), facecolor=SURFACE)
     ax.barh(range(len(runs)), values, height=0.62, color=[FAMILY[RUNS[r][0]] for r in runs],

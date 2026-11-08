@@ -1,0 +1,27 @@
+{
+  "run": "yolo26s_final_all_step2_e12_b3_s42_v1",
+  "official_val": {
+    "mAP": 0.19424619833789133,
+    "AP50": 0.37463870590762605,
+    "AP75": 0.17623742073464096,
+    "AP_small": 0.10960745178024772,
+    "AP_medium": 0.19528026441153107,
+    "AP_large": 0.3071105327065092
+  },
+  "train_hours_this_call": 2.861148398582223,
+  "args": {
+    "run_name": "yolo26s_final_all_step2_e12_b3_s42_v1",
+    "model": "/home/stalex/unik_shit/ai/ai-hw-object-detection/notebooks/yolo26s.pt",
+    "train_list": "/home/stalex/unik_shit/ai/ai-hw-object-detection/prep/yolo/train_step2_masked.txt",
+    "epochs": 12,
+    "close_mosaic": 3,
+    "imgsz": 1280,
+    "batch": 3,
+    "workers": 4,
+    "lr0": 0.01,
+    "seed": 42,
+    "resume": false,
+    "skip_train": false,
+    "hflip_only": false
+  }
+}

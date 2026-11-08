@@ -32,10 +32,12 @@ def main(argv=None):
     p.add_argument("--tag", required=True, help="output folder suffix: <run>/predict_<tag>/")
     p.add_argument("--gt", default=str(REPO / "prep/coco/train_step5_fold0_val.json"))
     p.add_argument("--test", action="store_true", help="predict test_images.csv instead of a GT image set")
+    p.add_argument("--image-root", default="train", help="split folder the GT file_names are relative to (train or val)")
     p.add_argument("--nms-thresh", type=float)
     p.add_argument("--rpn-post-nms-test", type=int)
     p.add_argument("--test-size", type=int, help="short side at test time (training default 720)")
     p.add_argument("--max-size", type=int, help="long-side cap at test time (training default 1280)")
+    p.add_argument("--hflip", action="store_true", help="test-time augmentation: predict on mirrored frames")
     p.add_argument("--min-score", type=float, default=0.0, help="drop detections below this score (smaller dumps)")
     p.add_argument("--batch", type=int, default=4)
     p.add_argument("--workers", type=int, default=4)
@@ -68,7 +70,7 @@ def main(argv=None):
         images = submit.read_test_images(REPO / "test_images.csv")
         if args.limit:
             images = images[:args.limit]
-        predictions = predict(model, images, REPO, device, batch=args.batch, workers=args.workers)
+        predictions = predict(model, images, REPO, device, batch=args.batch, workers=args.workers, hflip=args.hflip)
         predictions = [d for d in predictions if d["score"] >= args.min_score]
         write_json(out / "test_predictions.json", predictions)
         submit.write_submission(images, predictions, out / "submission.csv")
@@ -79,7 +81,7 @@ def main(argv=None):
         gt = read_json(args.gt)
         if args.limit:
             gt = subset_ground_truth(gt, [i["id"] for i in gt["images"][:args.limit]])
-        predictions = predict(model, gt["images"], REPO / "train", device, batch=args.batch, workers=args.workers)
+        predictions = predict(model, gt["images"], REPO / args.image_root, device, batch=args.batch, workers=args.workers, hflip=args.hflip)
         predictions = [d for d in predictions if d["score"] >= args.min_score]
         write_json(out / "val_predictions.json", predictions)
         report = evaluate_predictions(gt, predictions)

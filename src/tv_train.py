@@ -42,7 +42,7 @@ def read_image(path):
 class TrainSet(Dataset):
     """Masked training frames + boxes from the fold's COCO GT (crowd/ignore boxes dropped)."""
 
-    def __init__(self, image_list, coco_json, hflip=0.5):
+    def __init__(self, image_list, coco_json, hflip=0.5, lowres_p=0.0, lowres_widths=(640, 1000)):
         coco = read_json(coco_json)
         by_key = {image_key(i["file_name"]): i for i in coco["images"]}
         boxes = {i["id"]: [] for i in coco["images"]}
@@ -58,6 +58,7 @@ class TrainSet(Dataset):
         if len(self.items) != len(coco["images"]):
             raise ValueError("Training list and fold GT have different image sets")
         self.hflip = hflip
+        self.lowres_p, self.lowres_widths = lowres_p, lowres_widths
 
     def __len__(self):
         return len(self.items)
@@ -76,6 +77,14 @@ class TrainSet(Dataset):
                 xyxy.append([x1, y1, x2, y2])
                 labels.append(category)
         boxes = torch.tensor(xyxy, dtype=torch.float32).reshape(-1, 4)
+        if self.lowres_p and random.random() < self.lowres_p:
+            # Low-resolution augmentation: the test set has 680x382 / 960x540 clips that training lacks. Shrink the
+            # frame to a test-like width and blow it back up to its own size, so boxes stay valid and only detail is lost.
+            target_w = random.uniform(*self.lowres_widths)
+            if width > 1.1 * target_w:
+                small = (max(1, round(height * target_w / width)), round(target_w))
+                x = torch.nn.functional.interpolate(image[None], size=small, mode="bilinear", antialias=True)
+                image = torch.nn.functional.interpolate(x, size=(height, width), mode="bilinear")[0].clamp_(0, 1)
         if random.random() < self.hflip:
             image = image.flip(-1)
             boxes = torch.stack([width - boxes[:, 2], boxes[:, 1], width - boxes[:, 0], boxes[:, 3]], 1)
@@ -236,15 +245,22 @@ def set_mode(model, train):
 
 
 @torch.no_grad()
-def predict(model, images, root, device, batch=4, workers=4, amp=True):
+def predict(model, images, root, device, batch=4, workers=4, amp=True, hflip=False):
+    """hflip: test-time augmentation pass on mirrored frames; boxes are mirrored back to the original frame."""
     set_mode(model, False)
     loader = DataLoader(ImageSet(images, root), batch_size=batch, num_workers=workers, collate_fn=collate)
     predictions, seen = [], 0
     for batch_images, infos in loader:
+        if hflip:
+            batch_images = [i.flip(-1) for i in batch_images]
         with torch.autocast("cuda", dtype=torch.float16, enabled=amp):
             outputs = model([i.to(device, non_blocking=True) for i in batch_images])
-        for output, info in zip(outputs, infos):
-            boxes = output["boxes"].float().cpu().tolist()
+        for output, info, image in zip(outputs, infos, batch_images):
+            boxes = output["boxes"].float().cpu()
+            if hflip:
+                width = image.shape[-1]
+                boxes = torch.stack([width - boxes[:, 2], boxes[:, 1], width - boxes[:, 0], boxes[:, 3]], dim=1)
+            boxes = boxes.tolist()
             for (x1, y1, x2, y2), score, label in zip(boxes, output["scores"].float().cpu().tolist(),
                                                      output["labels"].cpu().tolist()):
                 # RetinaNet keeps an unused logit for label 0 (no positives ever); drop it, it is not a class.
@@ -295,8 +311,13 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--arch", choices=["fasterrcnn", "retinanet"], default="fasterrcnn")
     p.add_argument("--run-name", required=True)
-    p.add_argument("--fold", type=int, default=0)
+    p.add_argument("--fold", type=int, default=0,
+                   help="-1 = final model: train on ALL training clips, score on the untouched official val/ split")
     p.add_argument("--step", type=int, default=5)
+    p.add_argument("--lowres-p", type=float, default=0.0,
+                   help="probability of the low-resolution augmentation (shrink to 640-1000 px wide, enlarge back)")
+    p.add_argument("--no-mask", action="store_true",
+                   help="D1 ablation: train on the original frames instead of the ignore-region-masked ones")
     p.add_argument("--epochs", type=int, required=True)
     p.add_argument("--batch", type=int, default=4)
     p.add_argument("--lr", type=float, default=None, help="default: 0.02 * batch / 16 (SGD)")
@@ -348,19 +369,25 @@ def main(argv=None):
 
     seed_everything(args.seed)
     lr = args.lr if args.lr is not None else 0.02 * args.batch / 16
+    if args.fold < 0:  # final model: every training clip; official val/ (step 5) as the only holdout
+        train_list = prep / "yolo" / (f"train_step{args.step}.txt" if args.no_mask else f"train_step{args.step}_masked.txt")
+        train_gt, val_gt, val_root = f"train_step{args.step}.json", "val_step5.json", data / "val"
+    else:
+        train_list = prep / "yolo" / (f"train_step{args.step}_fold{args.fold}_train.txt" if args.no_mask
+                                      else f"train_step{args.step}_masked_fold{args.fold}_train.txt")
+        train_gt = f"train_step{args.step}_fold{args.fold}_train.json"
+        val_gt, val_root = f"train_step{args.step}_fold{args.fold}_val.json", data / "train"
     lo, hi = args.test_size * (1 - args.jitter), args.test_size * (1 + args.jitter)
     train_sizes = list(range(int(round(lo / 32) * 32), int(hi) + 1, 32))
     max_size_train = int(math.ceil(args.max_size * (1 + args.jitter)))
     config = {**vars(args), "lr": lr, "train_short_sides": train_sizes, "max_size_train": max_size_train,
               "optimizer": "SGD momentum 0.9, wd 1e-4", "schedule": "linear warm-up, then per-iteration cosine to 0",
-              "train_images": f"prep/yolo/train_step{args.step}_masked_fold{args.fold}_train.txt (masked)",
-              "train_gt": f"prep/coco/train_step{args.step}_fold{args.fold}_train.json",
-              "val_gt": f"prep/coco/train_step{args.step}_fold{args.fold}_val.json (original images)"}
+              "train_images": train_list.name + (" (ORIGINAL, unmasked)" if args.no_mask else " (masked)"),
+              "train_gt": f"prep/coco/{train_gt}", "val_gt": f"prep/coco/{val_gt} (original images)"}
     write_json(out / "config.json", config)
 
-    gt_val = read_json(prep / "coco" / f"train_step{args.step}_fold{args.fold}_val.json")
-    train_set = TrainSet(prep / "yolo" / f"train_step{args.step}_masked_fold{args.fold}_train.txt",
-                         prep / "coco" / f"train_step{args.step}_fold{args.fold}_train.json")
+    gt_val = read_json(prep / "coco" / val_gt)
+    train_set = TrainSet(train_list, prep / "coco" / train_gt, lowres_p=args.lowres_p)
     val_images = gt_val["images"]
     if args.limit:
         train_set.items = train_set.items[:args.limit]
@@ -446,7 +473,7 @@ def main(argv=None):
                "lr": optimizer.param_groups[0]["lr"], "epoch_min": (time.perf_counter() - t0) / 60}
         if (epoch + 1) % args.eval_every == 0 or epoch + 1 == args.epochs:
             t1 = time.perf_counter()
-            predictions = predict(model, val_images, data / "train", device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
+            predictions = predict(model, val_images, val_root, device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
             metrics = evaluate_predictions(gt_val, predictions)["metrics"]
             row.update({k: v for k, v in metrics.items()}, eval_min=(time.perf_counter() - t1) / 60)
             if metrics["mAP"] > best:
@@ -467,12 +494,12 @@ def main(argv=None):
     say(f"training done in {training_hours:.2f} h; best fold mAP {best:.4f}")
 
     # Final reported numbers come from the last epoch (fixed-length protocol), not the best checkpoint.
-    predictions = predict(model, val_images, data / "train", device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
+    predictions = predict(model, val_images, val_root, device, workers=args.eval_workers if args.eval_workers is not None else args.workers, amp=amp)
     write_json(out / "val_predictions.json", predictions)
     report = evaluate_predictions(gt_val, predictions)
     write_json(out / "metrics.json", report)
     say("final fold metrics", json.dumps(report["metrics"]))
-    paths = [data / "train" / i["file_name"] for i in val_images]
+    paths = [val_root / i["file_name"] for i in val_images]
     sample = [paths[round(i * (len(paths) - 1) / 31)] for i in range(32)] if len(paths) > 1 else paths
     speed = benchmark(model, sample, device, amp=amp)
     write_json(out / "speed.json", speed)

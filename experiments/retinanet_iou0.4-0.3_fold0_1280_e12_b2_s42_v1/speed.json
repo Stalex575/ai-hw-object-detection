@@ -1,0 +1,10 @@
+{
+  "fps": 20.80187561489044,
+  "mean_ms": 48.072588189315866,
+  "batch": 1,
+  "warmup": 20,
+  "repeats": 100,
+  "half": true,
+  "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "scope": "image decode, preprocessing, inference, post-processing and CPU box transfer"
+}

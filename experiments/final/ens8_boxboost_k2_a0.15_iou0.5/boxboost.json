@@ -1,0 +1,10 @@
+{
+  "input": "outputs/ens8_frcnn_yolo_2ckpt_tta_iou0.6/test_predictions.json",
+  "k": 2,
+  "alpha": 0.15,
+  "thr": 0.5,
+  "val_mAP_all_frames": {
+    "before": 0.2668,
+    "after": 0.2683
+  }
+}

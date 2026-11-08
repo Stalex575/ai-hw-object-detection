@@ -1,0 +1,13 @@
+{
+  "python": "3.13.13",
+  "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "commit": "b6e03bd0b6e7040d6015f814816005ab6c4fd830",
+  "src_dirty": true,
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "numpy": "2.5.4",
+    "faster-coco-eval": "1.8.0"
+  },
+  "folds_sha256": "e62291a47fc46cfbdc9f7c434943d34246a15c12cfe7a490b4c2aabdb874dd0d"
+}
