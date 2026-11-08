@@ -1,0 +1,2 @@
+id,owner,family,fold,mAP,AP50,AP75,AP_small,AP_medium,AP_large,FPS,GPU_h_training,public_LB,commit,eval_weights,hours,epochs,target_epochs,actual_batch,timed_out
+yolo26s_augs_fold0_1280_e25_s42_mac_continued_v1,Oleh,YOLO26s,0,0.2415340750843258,0.45856371364091997,0.2213935479697766,0.07434521990724026,0.20210768743377908,0.3912177507526314,22.57031266427955,8.415433377766105,,b31e3742354d4ec79185edac576b465bfb67374c,last,8.415433377766105,25,25,2,False

@@ -1,0 +1,20 @@
+{
+  "hours": 8.415433377766105,
+  "epochs": 25,
+  "target_epochs": 25,
+  "actual_batch": 2,
+  "timed_out": false,
+  "hours_basis": "Original partial attempt + elapsed resumed epochs 10\u201315 from CSV + final session; excludes laptop pause.",
+  "session_hours": {
+    "initial_partial": 3.3195402246644434,
+    "epochs10_to15": 1.983138888888889,
+    "epochs16_to25": 3.112754264212773
+  },
+  "initial_batch": 4,
+  "completed_epochs": 25,
+  "resume_epochs": [
+    10,
+    16
+  ],
+  "mosaic_off_from_epoch": 16
+}

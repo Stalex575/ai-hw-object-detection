@@ -1,0 +1,13 @@
+{
+  "fps": 22.57031266427955,
+  "mean_ms": 44.305987908737734,
+  "batch": 1,
+  "warmup": 20,
+  "repeats": 100,
+  "imgsz": 1280,
+  "half": false,
+  "end2end": true,
+  "device": "mps",
+  "gpu": null,
+  "scope": "image decode, preprocessing, inference, post-processing and CPU box transfer"
+}

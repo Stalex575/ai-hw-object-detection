@@ -1,0 +1,25 @@
+{
+  "source_run": "yolo26s_augs_fold0_1280_e25_s42_mac_continued_v1",
+  "checkpoint": "/Users/oleh/University/AI/hw2/outputs/yolo26s_augs_fold0_1280_e25_s42_mac_continued_v1/train/weights/best.pt",
+  "checkpoint_sha256": "65c5b1692020c6ad8e514c91cdd3f3c07aaeca5beb9305e4ae35963e9a00a46e",
+  "selected_epoch": 5,
+  "selection_metric": "native Ultralytics validation mAP",
+  "training_completed_epochs": 25,
+  "selection_status": "post-hoc validation-selected checkpoint; optimistic compared with fixed last-epoch protocol",
+  "inference": {
+    "imgsz": 1280,
+    "conf": 0.001,
+    "max_det": 500,
+    "end2end": true,
+    "half": false,
+    "device": "mps",
+    "batch": 2
+  },
+  "comparison": {
+    "best_epoch": 5,
+    "best_mAP": 0.2548015177165269,
+    "last25_mAP": 0.2415340750843258,
+    "partial10_mAP": 0.2471229999113664
+  },
+  "submission_sha256": "9f5ca69adcd451babf73c8f2ff5afbb2f94147ceae2c33590929aa140b9881b4"
+}
