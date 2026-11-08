@@ -1,0 +1,45 @@
+{
+  "val": [
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_valall/val_predictions.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_valall_hflip/val_predictions.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/valall_best.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/valall_best_hflip.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_e2_valall/val_predictions.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_e2_valall_hflip/val_predictions.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/valall_epoch2.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/valall_epoch2_hflip.json",
+    "outputs/oleh_yolo26s_augs_epoch5/valall_best.json",
+    "outputs/oleh_yolo26s_augs_epoch5/valall_best_hflip.json"
+  ],
+  "test": [
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/test_predictions.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_test_hflip/test_predictions.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_best.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_best_hflip.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_e2_test/test_predictions.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_e2_test_hflip/test_predictions.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_epoch2.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_epoch2_hflip.json",
+    "outputs/oleh_yolo26s_augs_epoch5/test_best.json",
+    "outputs/oleh_yolo26s_augs_epoch5/test_best_hflip.json"
+  ],
+  "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "iou": 0.6,
+  "skip": 0.0,
+  "submission": {
+    "images": 3811,
+    "images_with_predictions": 3811,
+    "detections": 1902008
+  }
+}

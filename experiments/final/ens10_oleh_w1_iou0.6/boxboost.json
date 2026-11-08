@@ -1,0 +1,11 @@
+{
+  "k": 2,
+  "alpha": 0.15,
+  "thr": 0.5,
+  "file": "submission_ens10_oleh_w1_boxboost.csv",
+  "check": {
+    "images": 3811,
+    "images_with_predictions": 3811,
+    "detections": 1902008
+  }
+}

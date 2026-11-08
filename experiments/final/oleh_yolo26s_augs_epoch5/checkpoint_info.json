@@ -1,0 +1,44 @@
+{
+  "selected_epoch": 5,
+  "trained_through_epoch": 25,
+  "model": "YOLO26s",
+  "ultralytics_version": "8.4.123",
+  "checkpoint_sha256": "65c5b1692020c6ad8e514c91cdd3f3c07aaeca5beb9305e4ae35963e9a00a46e",
+  "training_dataset": "train/ only, fold-0 training clips, every fifth frame, masked ignore regions",
+  "training_images": 3243,
+  "optimizer_actual": "AdamW",
+  "learning_rate_actual": 0.000833,
+  "optimizer_config": "auto; saved lr0=0.01 was ignored by auto optimizer",
+  "batch_at_selected_epoch": 4,
+  "precision_at_selected_epoch": "FP32 on MPS",
+  "warmup_epochs": 3.0,
+  "close_mosaic": 10,
+  "fold0_shared_metrics": {
+    "mAP": 0.2548015177165269,
+    "AP50": 0.47678437355862235,
+    "AP75": 0.23982191206322245,
+    "AP_small": 0.07405133406380295,
+    "AP_medium": 0.21328692295975274,
+    "AP_large": 0.3607152206827452
+  },
+  "inference": {
+    "imgsz": 1280,
+    "conf": 0.001,
+    "iou": 0.7,
+    "max_det": 500,
+    "rect": false,
+    "augment": false,
+    "end2end": true
+  },
+  "class_names": {
+    "0": "person",
+    "1": "bicycle",
+    "2": "car",
+    "3": "van",
+    "4": "truck",
+    "5": "tricycle",
+    "6": "bus",
+    "7": "motor"
+  },
+  "validation_basis": "fold 0; official val/ metrics have not been measured for this checkpoint"
+}
