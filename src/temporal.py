@@ -53,10 +53,10 @@ def index(predictions, images):
     return arrays, order
 
 
-def rescore(predictions, images, k=2, alpha=0.4, thr=0.3, prepared=None):
+def rescore(predictions, images, k=2, alpha=0.4, thr=0.3, prepared=None, inplace=False):
     arrays, order = prepared or index(predictions, images)
     categories = {c for _, c in arrays}
-    new = [dict(d) for d in predictions]
+    new = predictions if inplace else [dict(d) for d in predictions]  # inplace saves RAM; scores are read from the arrays
     for frames in order.values():
         for position, image_id in enumerate(frames):
             neighbours = [frames[j] for j in range(position - k, position + k + 1)

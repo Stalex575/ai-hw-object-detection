@@ -1,0 +1,42 @@
+{
+  "test": [
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/test_predictions.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_test_hflip/test_predictions.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_best.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_best_hflip.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_e2_test/test_predictions.json",
+    "outputs/frcnn_final_all_step2_lowres_e6_b2_s42_v1/predict_e2_test_hflip/test_predictions.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_epoch2.json",
+    "outputs/yolo26s_final_all_step2_e12_b3_s42_v1/test_epoch2_hflip.json",
+    "outputs/oleh_yolo26s_augs_epoch5/test_best.json",
+    "outputs/oleh_yolo26s_augs_epoch5/test_best_hflip.json",
+    "outputs/oleh_yolo26s_final_all_e5/test_best.json",
+    "outputs/oleh_yolo26s_final_all_e5/test_best_hflip.json"
+  ],
+  "weights": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2
+  ],
+  "iou": 0.6,
+  "boxboost": {
+    "k": 2,
+    "alpha": 0.15,
+    "thr": 0.5
+  },
+  "per_clip": true,
+  "check": {
+    "images": 3811,
+    "images_with_predictions": 3811,
+    "detections": 1902800
+  }
+}
