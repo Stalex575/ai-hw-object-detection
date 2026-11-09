@@ -1,0 +1,12 @@
+{
+  "selected_epoch": 5,
+  "completed_epochs": 8,
+  "early_stopping_triggered": false,
+  "selection_metric": "native Ultralytics validation mAP50-95",
+  "native_selected_mAP": 0.20636,
+  "native_last_mAP": 0.19885,
+  "best_checkpoint_sha256": "133f75904328753527827a407a482d7c23b59d35848ef3d7a93c14931844f77e",
+  "submission_sha256": "7c0ce70fbed2e05304e1f983d17ec0a70e0a36651924adbef85f04f536c2eb86",
+  "submission_verified": true,
+  "shared_metrics_recomputed": true
+}
