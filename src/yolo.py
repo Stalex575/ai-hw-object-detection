@@ -17,6 +17,34 @@ def image_key(path):
 
 def prepare_fold(data, prep, folds, fold=0, step=5):
     data, prep, folds = Path(data).resolve(), Path(prep).resolve(), Path(folds).resolve()
+    if fold == -1:
+        train_list = prep / 'yolo' / f'train_step{step}_masked.txt'
+        if not train_list.exists():
+            convert.main(['yolo', '--split-dir', str(data / 'train'), '--out',
+                          str(prep / 'yolo'), '--frame-step', str(step)])
+        gt_path = prep / 'coco' / 'val_step5.json'
+        if not gt_path.exists():
+            convert.main(['coco', '--split-dir', str(data / 'val'), '--out', str(gt_path),
+                          '--frame-step', '5'])
+        truth = read_json(gt_path)
+        train_paths = [Path(p) for p in train_list.read_text().splitlines() if p.strip()]
+        expected = {image_key(p) for paths in convert.list_frames(data / 'train').values()
+                    for p in convert.step_filter(paths, step)}
+        if len(train_paths) != len(expected) or {image_key(p) for p in train_paths} != expected:
+            raise ValueError('All-clips training list differs from the requested frame step')
+        if {p.parent.name for p in train_paths} & {convert.image_clip(i) for i in truth['images']}:
+            raise ValueError('Training clips overlap official validation')
+        for path in train_paths:
+            label = Path(str(path).replace('/images/', '/labels/')).with_suffix('.txt')
+            if not path.is_file() or not label.is_file():
+                raise FileNotFoundError(path)
+        val_list = prep / 'yolo' / 'officialval_step5.txt'
+        val_list.write_text(''.join(f"{data / 'val' / i['file_name']}\n" for i in truth['images']))
+        run_yaml = prep / 'yolo' / f'all_step{step}.yaml'
+        run_yaml.write_text(yaml.safe_dump({'path': str(run_yaml.parent), 'train': str(train_list),
+                                           'val': str(val_list), 'names': list(CLASS_NAMES)}, sort_keys=False))
+        return run_yaml, gt_path, {'train_images': len(train_paths), 'val_images': len(truth['images']),
+                                   'fold': -1, 'frame_step': step, 'validation_split': 'official val/'}
     gt_path = prep / "coco" / f"train_step{step}_fold{fold}_val.json"
     source_yaml = prep / "yolo" / f"train_step{step}_masked_fold{fold}.yaml"
     if not gt_path.exists():
