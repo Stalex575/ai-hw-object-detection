@@ -312,7 +312,7 @@ How we got there (history, Sat Nov 7): on fold 0, Faster R-CNN R50-FPN v2 at 128
 | `experiments/<run>/train_log.csv` | Per-epoch losses + shared-evaluator mAP every 2 epochs (Faster R-CNN) |
 | `experiments/<run>/args.yaml`, `config.json` | Exact training settings |
 | `experiments/<run>/runtime.json` | Library versions and git commit |
-| `notebooks/runs/*.ipynb` | Executed run copies of `notebooks/04_anchor_free_yolo.ipynb` (only the run name, config and model class changed). `yolo26s_smoke…_v1.ipynb` stops with an error at the export cell (a zero-area box, since fixed in `src/yolo.py`); `…_post.ipynb` is its rerun from the saved weights. |
+| `notebooks/runs/*.ipynb` | Executed run copies of `notebooks/04_anchor_free_yolo.ipynb` (only the run name, config and model class changed). For the 640 smoke run, `…_post.ipynb` is the rerun from the saved weights after the zero-area-box fix in `src/yolo.py` (see the lab notebook). |
 | `experiments/<run>/last/` | Ultralytics runs re-scored on `last.pt` (the protocol numbers) |
 | `experiments/anchors_kmeans/` | Anchor diagnostics and the k-means anchor files |
 | `experiments/tide_frcnn/` | TIDE-style error breakdown + failure cases of Faster R-CNN |
